@@ -12,7 +12,6 @@ export const CameraControls: React.FC = () => {
   useEffect(() => {
     camera.near = 0.1;
     camera.far = 1000;
-    camera.fov = 75;
     camera.updateProjectionMatrix();
   }, [camera]);
 
