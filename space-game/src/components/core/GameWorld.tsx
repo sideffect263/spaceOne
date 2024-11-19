@@ -1,4 +1,3 @@
-// src/components/core/GameWorld.tsx
 import React, { useRef, useEffect } from 'react';
 import { useFrame, useThree } from '@react-three/fiber';
 import { Vector3, Quaternion, Group } from 'three';
@@ -6,45 +5,58 @@ import { useGameStore } from '../../state/gameStore';
 import { CameraControls } from './Camera/CameraControls';
 import { Spacecraft } from './Spacecraft/Spacecraft';
 import { Environment } from './Environment/Environment';
+import { PhysicsEngine } from '../../systems/physics/PhysicsEngine';
+import { CollisionSystem } from '../../systems/physics/CollisionSystem';
 
 export const GameWorld: React.FC = () => {
-  const { camera } = useThree();
-  const gameState = useGameStore();
-  const worldRef = useRef<Group>(null);
+ const { scene } = useThree();
+ const {
+   playerPosition,
+   playerRotation,
+ } = useGameStore();
+ 
+ const worldRef = useRef<Group>(null);
+ const physicsEngine = useRef(PhysicsEngine.getInstance());
+ const collisionSystem = useRef(CollisionSystem.getInstance());
 
-  useEffect(() => {
-    // Initialize game world
-    if (worldRef.current) {
-      worldRef.current.position.set(0, 0, 0);
-    }
-  }, []);
+ useEffect(() => {
+   scene.background = null;
+   return () => {
+     physicsEngine.current.clear();
+   };
+ }, [scene]);
 
-  useFrame((state, delta) => {
-    // Main game loop
-    updatePhysics(delta);
-    updateGameState(delta);
-    syncWithServer();
-  });
+ const updatePhysics = (delta: number) => {
+   physicsEngine.current.update(delta);
+   
+   const collisions = collisionSystem.current.update(
+     new Map([[playerPosition.toArray().join(','), {
+       position: playerPosition,
+       rotation: playerRotation,
+       velocity: new Vector3(),
+       acceleration: new Vector3(),
+       mass: 1,
+       id: 'player',
+       isStatic: false
+     }]])
+   );
 
-  const updatePhysics = (delta: number) => {
-    // Handle physics updates
-  };
+   collisions.forEach(collision => {
+     console.log('Collision detected:', collision);
+   });
+ };
 
-  const updateGameState = (delta: number) => {
-    // Update game state
-  };
+ useFrame((state, delta) => {
+   updatePhysics(delta);
+ });
 
-  const syncWithServer = () => {
-    // Handle network synchronization
-  };
-
-  return (
-    <group ref={worldRef}>
-      <CameraControls />
-      <Environment />
-      <Spacecraft />
-      {/* Add other game elements */}
-    </group>
-  );
+ return (
+   <>
+     <CameraControls />
+     <Environment />
+     <Spacecraft />
+     <gridHelper args={[1000, 100]} />
+     <axesHelper scale={5} />
+   </>
+ );
 };
-

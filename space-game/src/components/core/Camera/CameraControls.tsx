@@ -1,31 +1,39 @@
-// src/components/core/Camera/CameraControls.tsx
-import React, { useEffect } from 'react';
+import React, { useEffect, useRef } from 'react';
 import { useThree, useFrame } from '@react-three/fiber';
 import { useGameStore } from '../../../state/gameStore';
-import { Vector3 } from 'three';
+import { Vector3, Quaternion } from 'three';
 
 export const CameraControls: React.FC = () => {
   const { camera } = useThree();
-  const { playerPosition, playerRotation, isSpaceshipView } = useGameStore();
-
+  const { playerPosition, playerRotation } = useGameStore();
+  const cameraOffset = useRef(new Vector3(0, 3, 12));
+  const smoothSpeed = 0.05;
+  
   useEffect(() => {
-    // Set initial camera position
-    camera.position.set(0, 10, 20);
-    camera.lookAt(0, 0, 0);
-  }, []);
+    camera.near = 0.1;
+    camera.far = 1000;
+    camera.fov = 75;
+    camera.updateProjectionMatrix();
+  }, [camera]);
 
   useFrame(() => {
-    if (isSpaceshipView) {
-      // Calculate camera offset in local space
-      const offset = new Vector3(0, 3, 10);
-      offset.applyQuaternion(playerRotation);
-      
-      // Set camera position and rotation
-      camera.position.copy(playerPosition).add(offset);
-      camera.lookAt(playerPosition);
-    }
+    // Simply follow player rotation directly using quaternions
+    const targetPosition = playerPosition.clone();
+    const rotatedOffset = cameraOffset.current.clone();
+    
+    // Apply quaternion rotation directly
+    rotatedOffset.applyQuaternion(playerRotation);
+    targetPosition.add(rotatedOffset);
+
+    // Update camera position
+    camera.position.lerp(targetPosition, smoothSpeed);
+    
+    // Update camera orientation
+    camera.quaternion.slerp(playerRotation, smoothSpeed);
+    
+    // Ensure camera stays focused on player
+    camera.lookAt(playerPosition);
   });
 
   return null;
-
-   };
+};
